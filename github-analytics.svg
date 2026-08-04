@@ -6,35 +6,35 @@
 <text x="36" y="48" fill="#00aaff" font-size="15" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">My GitHub Statistics</text>
 <text x="36" y="76" fill="#00ffd0" font-size="14" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">★</text>
 <text x="56" y="76" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Total Stars:</text>
-<text x="172" y="76" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">2</text>
+<text x="172" y="76" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">32</text>
 <text x="36" y="96" fill="#00ffd0" font-size="14" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">↻</text>
 <text x="56" y="96" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Total Commits:</text>
-<text x="172" y="96" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">459</text>
+<text x="172" y="96" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">234</text>
 <text x="36" y="116" fill="#00ffd0" font-size="14" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">⑂</text>
 <text x="56" y="116" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Total PRs:</text>
-<text x="172" y="116" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">54</text>
+<text x="172" y="116" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">49</text>
 <text x="36" y="136" fill="#00ffd0" font-size="14" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">ⓘ</text>
 <text x="56" y="136" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Total Issues:</text>
 <text x="172" y="136" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">1</text>
 <text x="36" y="156" fill="#00ffd0" font-size="14" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">▣</text>
 <text x="56" y="156" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Contributed to:</text>
-<text x="172" y="156" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">33</text>
+<text x="172" y="156" fill="#ffffff" font-size="12" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">50</text>
 <circle cx="325" cy="107" r="32" stroke="#0e4670" stroke-width="5"/>
 <circle cx="325" cy="107" r="32" stroke="#00aaff" stroke-width="5" stroke-linecap="round" stroke-dasharray="172.9 201.1" transform="rotate(-90 325 107)"/>
 <text x="325" y="113" fill="#ffffff" font-size="22" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">A+</text>
 <rect x="16" y="242" width="392" height="166" rx="4" fill="#161616"/>
 <line x1="145" y1="264" x2="145" y2="388" stroke="#c9d1d9"/>
 <line x1="278" y1="264" x2="278" y2="388" stroke="#c9d1d9"/>
-<text x="82" y="306" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">377</text>
+<text x="82" y="306" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">266</text>
 <text x="82" y="338" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Total Contributions</text>
 <text x="82" y="361" fill="#8b949e" font-size="9" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">2024 - Present</text>
 <circle cx="212" cy="292" r="28" stroke="#ff8c00" stroke-width="4"/>
 <text x="212" y="299" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">1</text>
 <text x="212" y="345" fill="#ff9800" font-size="11" font-weight="700" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Current Streak</text>
 <text x="212" y="368" fill="#8b949e" font-size="9" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Aug 4, 2026</text>
-<text x="344" y="306" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">6</text>
+<text x="344" y="306" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">5</text>
 <text x="344" y="338" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Longest Streak</text>
-<text x="344" y="361" fill="#8b949e" font-size="8" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Nov 7, 2025 - Nov 12, 2025</text>
+<text x="344" y="361" fill="#8b949e" font-size="8" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Apr 30, 2026 - May 4, 2026</text>
 <rect x="468" y="120" width="330" height="180" rx="4" fill="#071126" stroke="#c9d1d9"/>
 <text x="492" y="154" fill="#00aaff" font-size="18" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">My Programming Languages</text>
 <rect x="492.0" y="174" width="88.0" height="7" fill="#f1e05a"/>
