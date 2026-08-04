@@ -31,27 +31,11 @@
 
 ---
 
-<!--- stats & Trophy (start) -->
+<h3 align="center"> Analytics 📊 </h3>
+
 <p align="center">
-  <!--- stats (start) -->
-<table align="center">
-<tr border="none">
-<td width="50%" align="center">
-<img align="center" src="https://awesome-github-stats.azurewebsites.net/user-stats/ThejanMihisara?theme=tokyonight" />
-<br></br>
-</td>
-<td width="50%" align="center">
-<img align="center" src="https://github-readme-stats.anuraghazra1.vercel.app/api/top-langs/?username=ThejanMihisara&theme=dark&hide_border=false&no-bg=true&no-frame=true&langs_count=10"/>
-</td>
-</tr>
-</table>
-<table align="center">
-  <tr>
-    <td width="50%" align="center">
-      <img src="https://github-readme-streak-stats.herokuapp.com/?user=ThejanMihisara&theme=dark&hide_border=false" alt="Thejan Mihisara GitHub Streak"/>
-    </td>
-  </tr>
-</table>
+  <img src="./github-analytics.svg?v=2" alt="GitHub Analytics" width="860" />
+</p>
 
 ---
 
