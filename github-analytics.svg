@@ -37,28 +37,28 @@
 <text x="344" y="361" fill="#8b949e" font-size="8" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Apr 30, 2026 - May 4, 2026</text>
 <rect x="468" y="120" width="330" height="180" rx="4" fill="#071126" stroke="#c9d1d9"/>
 <text x="492" y="154" fill="#00aaff" font-size="18" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">My Programming Languages</text>
-<rect x="492.0" y="174" width="88.0" height="7" fill="#f1e05a"/>
-<rect x="580.0" y="174" width="68.4" height="7" fill="#f7523f"/>
-<rect x="648.4" y="174" width="56.6" height="7" fill="#4F5D95"/>
-<rect x="705.0" y="174" width="49.6" height="7" fill="#3178c6"/>
-<rect x="754.5" y="174" width="8.2" height="7" fill="#b07219"/>
-<rect x="762.8" y="174" width="7.8" height="7" fill="#663399"/>
-<rect x="770.6" y="174" width="2.9" height="7" fill="#3572A5"/>
-<rect x="773.5" y="174" width="2.5" height="7" fill="#e34c26"/>
+<rect x="492.0" y="174" width="86.5" height="7" fill="#f1e05a"/>
+<rect x="578.5" y="174" width="68.6" height="7" fill="#f7523f"/>
+<rect x="647.1" y="174" width="56.2" height="7" fill="#4F5D95"/>
+<rect x="703.3" y="174" width="23.0" height="7" fill="#b07219"/>
+<rect x="726.3" y="174" width="17.4" height="7" fill="#e34c26"/>
+<rect x="743.7" y="174" width="13.0" height="7" fill="#3572A5"/>
+<rect x="756.7" y="174" width="5.5" height="7" fill="#663399"/>
+<rect x="762.2" y="174" width="13.8" height="7" fill="#3178c6"/>
 <circle cx="496" cy="201" r="5" fill="#f1e05a"/>
-<text x="507" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">JavaScript (31.00%)</text>
+<text x="507" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">JavaScript (30.45%)</text>
 <circle cx="638" cy="201" r="5" fill="#f7523f"/>
-<text x="649" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Blade (24.08%)</text>
+<text x="649" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Blade (24.16%)</text>
 <circle cx="496" cy="225" r="5" fill="#4F5D95"/>
-<text x="507" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">PHP (19.91%)</text>
-<circle cx="638" cy="225" r="5" fill="#3178c6"/>
-<text x="649" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">TypeScript (17.45%)</text>
-<circle cx="496" cy="249" r="5" fill="#b07219"/>
-<text x="507" y="253" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Java (2.90%)</text>
-<circle cx="638" cy="249" r="5" fill="#663399"/>
-<text x="649" y="253" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">CSS (2.75%)</text>
-<circle cx="496" cy="273" r="5" fill="#3572A5"/>
-<text x="507" y="277" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Python (1.02%)</text>
-<circle cx="638" cy="273" r="5" fill="#e34c26"/>
-<text x="649" y="277" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">HTML (0.88%)</text>
+<text x="507" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">PHP (19.80%)</text>
+<circle cx="638" cy="225" r="5" fill="#b07219"/>
+<text x="649" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Java (8.09%)</text>
+<circle cx="496" cy="249" r="5" fill="#e34c26"/>
+<text x="507" y="253" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">HTML (6.13%)</text>
+<circle cx="638" cy="249" r="5" fill="#3572A5"/>
+<text x="649" y="253" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Python (4.56%)</text>
+<circle cx="496" cy="273" r="5" fill="#663399"/>
+<text x="507" y="277" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">CSS (1.92%)</text>
+<circle cx="638" cy="273" r="5" fill="#3178c6"/>
+<text x="649" y="277" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">TypeScript (4.89%)</text>
 </svg>
