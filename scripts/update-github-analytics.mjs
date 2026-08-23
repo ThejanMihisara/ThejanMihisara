@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const USERNAME = process.env.GITHUB_USERNAME || "ThejanMihisara";
 const TOKEN = process.env.GH_STATS_TOKEN || process.env.GITHUB_TOKEN;
@@ -32,6 +32,7 @@ const [data, searchStats] = await Promise.all([
 ]);
 const stats = buildStats(data, searchStats);
 await writeFile("github-analytics.svg", renderSvg(stats), "utf8");
+await updateReadmeTimestamp(stats.updatedAt);
 
 async function fetchAnalytics() {
   const contributionFields = YEARS.map(({ alias, from, to }) => `
@@ -371,6 +372,19 @@ function renderLanguageRows(languages) {
     return `<circle cx="${x}" cy="${y}" r="5" fill="${escapeXml(lang.color)}"/>
 <text x="${x + 11}" y="${y + 4}" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">${escapeXml(lang.name)} (${lang.percent.toFixed(2)}%)</text>`;
   }).join("\n");
+}
+
+async function updateReadmeTimestamp(updatedAt) {
+  const readme = await readFile("README.md", "utf8");
+  const marker = `<!-- analytics-updated: ${updatedAt} -->`;
+  const updated = readme.includes("<!-- analytics-updated:")
+    ? readme.replace(/<!-- analytics-updated: .*? -->/, marker)
+    : readme.replace(
+      /(<img src="\.\/github-analytics\.svg" alt="GitHub Analytics" width="860" \/>\s*)/,
+      `$1 ${marker}\n`,
+    );
+
+  await writeFile("README.md", updated, "utf8");
 }
 
 function formatRange(start, end) {

@@ -35,6 +35,7 @@
 
 <p align="center">
  <img src="./github-analytics.svg" alt="GitHub Analytics" width="860" />
+ <!-- analytics-updated: 2026-08-24T00:00:00.000Z -->
 </p>
 
 ---
