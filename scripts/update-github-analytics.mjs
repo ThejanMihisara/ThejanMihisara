@@ -36,7 +36,7 @@ const [authorFilters, prCount, issueCount, languages] = await Promise.all([
   fetchLanguages(repos),
 ]);
 validateTokenAccess(repos, authorFilters);
-const totalCommits = await fetchTotalCommitsFromRepos(repos, authorFilters);
+const totalCommits = await fetchCommitSearchCount(`author:${USERNAME}`);
 const stats = buildStats(data, {
   commits: totalCommits,
   prs: prCount,
@@ -172,6 +172,17 @@ async function fetchIssueSearchCount(query) {
   return payload?.total_count ?? 0;
 }
 
+async function fetchCommitSearchCount(query) {
+  const params = new URLSearchParams({ q: query, per_page: "1" });
+  const payload = await fetchRestJson(
+    `https://api.github.com/search/commits?${params}`,
+    query,
+    false,
+    "application/vnd.github.cloak-preview+json",
+  );
+  return payload.total_count ?? 0;
+}
+
 async function fetchLanguages(repos) {
   const totals = new Map();
 
@@ -210,64 +221,6 @@ async function fetchLanguages(repos) {
     }));
 }
 
-async function fetchTotalCommitsFromRepos(repos, authorFilters) {
-  const seen = new Set();
-  let branchesChecked = 0;
-
-  for (const repo of repos) {
-    if (!repo.full_name) {
-      continue;
-    }
-
-    const branches = await fetchRepoBranches(repo);
-    branchesChecked += branches.length;
-
-    for (const branch of branches) {
-      if (!branch.name) {
-        continue;
-      }
-
-      for (const author of authorFilters) {
-        let page = 1;
-
-        while (true) {
-          const params = new URLSearchParams({
-            sha: branch.name,
-            author,
-            per_page: "100",
-            page: String(page),
-          });
-          const commits = await fetchRestJson(
-            `https://api.github.com/repos/${repo.full_name}/commits?${params}`,
-            `${repo.full_name} ${branch.name} commits`,
-            true,
-          );
-
-          if (!Array.isArray(commits) || commits.length === 0) {
-            break;
-          }
-
-          for (const commit of commits) {
-            if (commit.sha) {
-              seen.add(commit.sha);
-            }
-          }
-
-          if (commits.length < 100) {
-            break;
-          }
-
-          page += 1;
-        }
-      }
-    }
-  }
-
-  console.log(`Branches checked: ${branchesChecked}`);
-  console.log(`Unique commits found: ${seen.size}`);
-  return seen.size;
-}
-
 function validateTokenAccess(repos, authorFilters) {
   const privateRepoCount = repos.filter((repo) => repo.private).length;
 
@@ -286,38 +239,16 @@ function validateTokenAccess(repos, authorFilters) {
   }
 }
 
-async function fetchRepoBranches(repo) {
-  const branches = [];
-  let page = 1;
-
-  while (true) {
-    const batch = await fetchRestJson(
-      `https://api.github.com/repos/${repo.full_name}/branches?per_page=100&page=${page}`,
-      `${repo.full_name} branches page ${page}`,
-      true,
-    );
-
-    if (!Array.isArray(batch) || batch.length === 0) {
-      break;
-    }
-
-    branches.push(...batch);
-
-    if (batch.length < 100) {
-      break;
-    }
-
-    page += 1;
-  }
-
-  return branches;
-}
-
-async function fetchRestJson(url, context, optional = false) {
+async function fetchRestJson(
+  url,
+  context,
+  optional = false,
+  accept = "application/vnd.github+json",
+) {
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${TOKEN}`,
-      Accept: "application/vnd.github+json",
+      Accept: accept,
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": `${USERNAME}-analytics-action`,
     },
