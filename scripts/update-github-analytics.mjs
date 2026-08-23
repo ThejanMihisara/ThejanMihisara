@@ -26,11 +26,21 @@ const LANGUAGE_COLORS = {
   Dart: "#00B4AB",
 };
 
-const [data, searchStats] = await Promise.all([
-  fetchAnalytics(),
-  fetchSearchStats(),
+const data = await fetchAnalytics();
+const repos = await fetchAccessibleRepos();
+const [authorFilters, prCount, issueCount, languages] = await Promise.all([
+  fetchAuthorFilters(),
+  fetchIssueSearchCount(`type:pr author:${USERNAME}`),
+  fetchIssueSearchCount(`type:issue author:${USERNAME}`),
+  fetchLanguages(repos),
 ]);
-const stats = buildStats(data, searchStats);
+const totalCommits = await fetchTotalCommitsFromRepos(repos, authorFilters);
+const stats = buildStats(data, {
+  commits: totalCommits,
+  prs: prCount,
+  issues: issueCount,
+  languages,
+}, repos);
 await writeFile("github-analytics.svg", renderSvg(stats), "utf8");
 await updateReadmeTimestamp(stats.updatedAt);
 
@@ -74,38 +84,7 @@ async function fetchAnalytics() {
       user(login: $login) {
         login
         name
-        repositories(
-          first: 100
-          ownerAffiliations: OWNER
-          isFork: false
-          orderBy: { field: UPDATED_AT, direction: DESC }
-        ) {
-          nodes {
-            name
-            stargazerCount
-            forkCount
-            primaryLanguage {
-              name
-              color
-            }
-            languages(first: 8, orderBy: { field: SIZE, direction: DESC }) {
-              edges {
-                size
-                node {
-                  name
-                  color
-                }
-              }
-            }
-          }
-        }
         ${contributionFields}
-      }
-      pullRequestSearch: search(query: "author:${USERNAME} type:pr", type: ISSUE, first: 1) {
-        issueCount
-      }
-      issueSearch: search(query: "author:${USERNAME} type:issue", type: ISSUE, first: 1) {
-        issueCount
       }
     }
   `;
@@ -134,46 +113,210 @@ async function fetchAnalytics() {
     throw new Error(`GitHub user not found: ${USERNAME}`);
   }
 
-  return {
-    ...payload.data.user,
-    pullRequestSearch: payload.data.pullRequestSearch,
-    issueSearch: payload.data.issueSearch,
-  };
+  return payload.data.user;
 }
 
-async function fetchSearchStats() {
-  const [commits] = await Promise.allSettled([
-    fetchSearchCount("commits", `author:${USERNAME}`),
-  ]);
+async function fetchAccessibleRepos() {
+  const repos = [];
+  let page = 1;
 
-  return {
-    commits: valueOrNull(commits),
-  };
+  while (true) {
+    const batch = await fetchRestJson(
+      `https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&per_page=100&page=${page}&sort=updated&direction=desc`,
+      `repos page ${page}`,
+    );
+
+    if (!Array.isArray(batch) || batch.length === 0) {
+      break;
+    }
+
+    repos.push(...batch);
+
+    if (batch.length < 100) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  console.log(`Accessible repos: ${repos.length}`);
+  console.log(`Accessible private repos: ${repos.filter((repo) => repo.private).length}`);
+  return repos;
 }
 
-async function fetchSearchCount(type, query) {
+async function fetchAuthorFilters() {
+  const filters = new Set([USERNAME]);
+  const viewer = await fetchRestJson("https://api.github.com/user", "current user profile", true);
+  if (viewer?.login) {
+    filters.add(viewer.login);
+  }
+
+  const emails = await fetchRestJson("https://api.github.com/user/emails", "current user emails", true);
+  if (Array.isArray(emails)) {
+    for (const email of emails) {
+      if (email?.email) {
+        filters.add(email.email);
+      }
+    }
+  }
+
+  console.log(`Author filters available: ${filters.size}`);
+  return [...filters];
+}
+
+async function fetchIssueSearchCount(query) {
   const params = new URLSearchParams({ q: query, per_page: "1" });
-  const response = await fetch(`https://api.github.com/search/${type}?${params}`, {
+  const payload = await fetchRestJson(`https://api.github.com/search/issues?${params}`, query, true);
+  return payload?.total_count ?? 0;
+}
+
+async function fetchLanguages(repos) {
+  const totals = new Map();
+
+  for (const repo of repos) {
+    if (repo.fork || !repo.languages_url) {
+      continue;
+    }
+
+    const languages = await fetchRestJson(repo.languages_url, `${repo.full_name} languages`, true);
+    if (!languages) {
+      continue;
+    }
+
+    for (const [name, size] of Object.entries(languages)) {
+      const current = totals.get(name) || {
+        name,
+        color: LANGUAGE_COLORS[name] || "#8b949e",
+        size: 0,
+      };
+      current.size += Number(size) || 0;
+      totals.set(name, current);
+    }
+  }
+
+  const totalSize = [...totals.values()].reduce((sum, lang) => sum + lang.size, 0);
+  if (totalSize === 0) {
+    return [];
+  }
+
+  return [...totals.values()]
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 8)
+    .map((lang) => ({
+      ...lang,
+      percent: (lang.size / totalSize) * 100,
+    }));
+}
+
+async function fetchTotalCommitsFromRepos(repos, authorFilters) {
+  const seen = new Set();
+  let branchesChecked = 0;
+
+  for (const repo of repos) {
+    if (!repo.full_name) {
+      continue;
+    }
+
+    const branches = await fetchRepoBranches(repo);
+    branchesChecked += branches.length;
+
+    for (const branch of branches) {
+      if (!branch.name) {
+        continue;
+      }
+
+      for (const author of authorFilters) {
+        let page = 1;
+
+        while (true) {
+          const params = new URLSearchParams({
+            sha: branch.name,
+            author,
+            per_page: "100",
+            page: String(page),
+          });
+          const commits = await fetchRestJson(
+            `https://api.github.com/repos/${repo.full_name}/commits?${params}`,
+            `${repo.full_name} ${branch.name} commits`,
+            true,
+          );
+
+          if (!Array.isArray(commits) || commits.length === 0) {
+            break;
+          }
+
+          for (const commit of commits) {
+            if (commit.sha) {
+              seen.add(commit.sha);
+            }
+          }
+
+          if (commits.length < 100) {
+            break;
+          }
+
+          page += 1;
+        }
+      }
+    }
+  }
+
+  console.log(`Branches checked: ${branchesChecked}`);
+  console.log(`Unique commits found: ${seen.size}`);
+  return seen.size;
+}
+
+async function fetchRepoBranches(repo) {
+  const branches = [];
+  let page = 1;
+
+  while (true) {
+    const batch = await fetchRestJson(
+      `https://api.github.com/repos/${repo.full_name}/branches?per_page=100&page=${page}`,
+      `${repo.full_name} branches page ${page}`,
+      true,
+    );
+
+    if (!Array.isArray(batch) || batch.length === 0) {
+      break;
+    }
+
+    branches.push(...batch);
+
+    if (batch.length < 100) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return branches;
+}
+
+async function fetchRestJson(url, context, optional = false) {
+  const response = await fetch(url, {
     headers: {
-      Authorization: `bearer ${TOKEN}`,
-      Accept: type === "commits"
-        ? "application/vnd.github.cloak-preview+json"
-        : "application/vnd.github+json",
+      Authorization: `Bearer ${TOKEN}`,
+      Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": `${USERNAME}-analytics-action`,
     },
   });
-
   const payload = await response.json();
+
   if (!response.ok) {
-    throw new Error(JSON.stringify(payload, null, 2));
+    const message = `${context}: ${JSON.stringify(payload)}`;
+    if (optional) {
+      console.warn(`Skipped ${message}`);
+      return null;
+    }
+    throw new Error(message);
   }
 
-  return payload.total_count ?? null;
+  return payload;
 }
 
-function buildStats(user, searchStats) {
-  const repos = user.repositories.nodes;
+function buildStats(user, searchStats, repos) {
   const contributionYears = YEARS.map(({ alias }) => user[alias]);
   const totals = sumContributionYears(contributionYears);
 
@@ -183,11 +326,13 @@ function buildStats(user, searchStats) {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const streaks = calculateStreaks(days);
-  const languages = calculateLanguages(repos);
-  const totalStars = repos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
+  const languages = searchStats.languages;
+  const totalStars = repos
+    .filter((repo) => !repo.fork)
+    .reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
   const totalCommits = searchStats.commits ?? totals.totalCommitContributions;
-  const totalPRs = user.pullRequestSearch.issueCount ?? totals.totalPullRequestContributions;
-  const totalIssues = user.issueSearch.issueCount ?? totals.totalIssueContributions;
+  const totalPRs = searchStats.prs ?? totals.totalPullRequestContributions;
+  const totalIssues = searchStats.issues ?? totals.totalIssueContributions;
 
   console.log(`Total commits: ${totalCommits}`);
   console.log(`Total PRs: ${totalPRs}`);
@@ -211,34 +356,6 @@ function buildStats(user, searchStats) {
     languages,
     updatedAt: NOW.toISOString(),
   };
-}
-
-function calculateLanguages(repos) {
-  const totals = new Map();
-  for (const repo of repos) {
-    for (const edge of repo.languages.edges) {
-      const current = totals.get(edge.node.name) || {
-        name: edge.node.name,
-        color: edge.node.color || LANGUAGE_COLORS[edge.node.name] || "#8b949e",
-        size: 0,
-      };
-      current.size += edge.size;
-      totals.set(edge.node.name, current);
-    }
-  }
-
-  const totalSize = [...totals.values()].reduce((sum, lang) => sum + lang.size, 0);
-  if (totalSize === 0) {
-    return [];
-  }
-
-  return [...totals.values()]
-    .sort((a, b) => b.size - a.size)
-    .slice(0, 8)
-    .map((lang) => ({
-      ...lang,
-      percent: (lang.size / totalSize) * 100,
-    }));
 }
 
 function sumContributionYears(contributionYears) {
@@ -453,15 +570,6 @@ function buildYears(startYear, endYear) {
       to: to.toISOString(),
     };
   });
-}
-
-function valueOrNull(result) {
-  if (result.status === "fulfilled") {
-    return result.value;
-  }
-
-  console.warn(result.reason);
-  return null;
 }
 
 function escapeXml(value) {
