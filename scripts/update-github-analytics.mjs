@@ -1,11 +1,10 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 
 const USERNAME = process.env.GITHUB_USERNAME || "ThejanMihisara";
 const TOKEN = process.env.GITHUB_TOKEN;
 const API_URL = "https://api.github.com/graphql";
 const NOW = new Date();
 const FROM_DATE = oneYearAgo(NOW).toISOString();
-const STAMP = formatStamp(NOW);
 
 if (!TOKEN) {
   throw new Error("GITHUB_TOKEN is required to fetch GitHub analytics.");
@@ -32,7 +31,6 @@ const [data, searchStats] = await Promise.all([
 ]);
 const stats = buildStats(data, searchStats);
 await writeFile("github-analytics.svg", renderSvg(stats), "utf8");
-await updateReadmeCacheStamp();
 
 async function fetchAnalytics() {
   const query = `
@@ -359,15 +357,6 @@ function renderLanguageRows(languages) {
   }).join("\n");
 }
 
-async function updateReadmeCacheStamp() {
-  const readme = await readFile("README.md", "utf8");
-  const updated = readme.replace(
-    /github-analytics\.svg\?v=[^"]+/,
-    `github-analytics.svg?v=${STAMP}`,
-  );
-  await writeFile("README.md", updated, "utf8");
-}
-
 function formatRange(start, end) {
   if (!start || !end) {
     return "No active streak";
@@ -397,19 +386,6 @@ function formatHumanDate(date) {
     timeZone: "UTC",
     timeZoneName: "short",
   }).format(date);
-}
-
-function formatStamp(date) {
-  const pad = (value) => String(value).padStart(2, "0");
-  return [
-    date.getUTCFullYear(),
-    pad(date.getUTCMonth() + 1),
-    pad(date.getUTCDate()),
-    "_",
-    pad(date.getUTCHours()),
-    pad(date.getUTCMinutes()),
-    pad(date.getUTCSeconds()),
-  ].join("");
 }
 
 function toDateOnly(date) {
