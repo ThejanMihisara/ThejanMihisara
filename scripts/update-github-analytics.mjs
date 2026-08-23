@@ -129,13 +129,17 @@ async function fetchAnalytics() {
 }
 
 async function fetchSearchStats() {
-  const [commits, prs, issues] = await Promise.all([
+  const [commits, prs, issues] = await Promise.allSettled([
     fetchSearchCount("commits", `author:${USERNAME}`),
     fetchSearchCount("issues", `author:${USERNAME} type:pr`),
     fetchSearchCount("issues", `author:${USERNAME} type:issue`),
   ]);
 
-  return { commits, prs, issues };
+  return {
+    commits: valueOrNull(commits),
+    prs: valueOrNull(prs),
+    issues: valueOrNull(issues),
+  };
 }
 
 async function fetchSearchCount(type, query) {
@@ -179,9 +183,9 @@ function buildStats(user, searchStats) {
   const streaks = calculateStreaks(days);
   const languages = calculateLanguages(repos);
   const totalStars = repos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
-  const totalCommits = searchStats.commits || contributions.totalCommitContributions;
-  const totalPRs = searchStats.prs || contributions.totalPullRequestContributions;
-  const totalIssues = searchStats.issues || contributions.totalIssueContributions;
+  const totalCommits = searchStats.commits ?? contributions.totalCommitContributions;
+  const totalPRs = searchStats.prs ?? contributions.totalPullRequestContributions;
+  const totalIssues = searchStats.issues ?? contributions.totalIssueContributions;
 
   return {
     username: user.login,
@@ -416,6 +420,15 @@ function oneYearAgo(date) {
   const result = new Date(date);
   result.setUTCFullYear(result.getUTCFullYear() - 1);
   return result;
+}
+
+function valueOrNull(result) {
+  if (result.status === "fulfilled") {
+    return result.value;
+  }
+
+  console.warn(result.reason);
+  return null;
 }
 
 function escapeXml(value) {
