@@ -101,6 +101,12 @@ async function fetchAnalytics() {
         }
         ${contributionFields}
       }
+      pullRequestSearch: search(query: "author:${USERNAME} type:pr", type: ISSUE, first: 1) {
+        issueCount
+      }
+      issueSearch: search(query: "author:${USERNAME} type:issue", type: ISSUE, first: 1) {
+        issueCount
+      }
     }
   `;
 
@@ -128,20 +134,20 @@ async function fetchAnalytics() {
     throw new Error(`GitHub user not found: ${USERNAME}`);
   }
 
-  return payload.data.user;
+  return {
+    ...payload.data.user,
+    pullRequestSearch: payload.data.pullRequestSearch,
+    issueSearch: payload.data.issueSearch,
+  };
 }
 
 async function fetchSearchStats() {
-  const [commits, prs, issues] = await Promise.allSettled([
+  const [commits] = await Promise.allSettled([
     fetchSearchCount("commits", `author:${USERNAME}`),
-    fetchSearchCount("issues", `author:${USERNAME} type:pr`),
-    fetchSearchCount("issues", `author:${USERNAME} type:issue`),
   ]);
 
   return {
     commits: valueOrNull(commits),
-    prs: valueOrNull(prs),
-    issues: valueOrNull(issues),
   };
 }
 
@@ -150,7 +156,9 @@ async function fetchSearchCount(type, query) {
   const response = await fetch(`https://api.github.com/search/${type}?${params}`, {
     headers: {
       Authorization: `bearer ${TOKEN}`,
-      Accept: "application/vnd.github+json",
+      Accept: type === "commits"
+        ? "application/vnd.github.cloak-preview+json"
+        : "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": `${USERNAME}-analytics-action`,
     },
@@ -178,8 +186,13 @@ function buildStats(user, searchStats) {
   const languages = calculateLanguages(repos);
   const totalStars = repos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
   const totalCommits = searchStats.commits ?? totals.totalCommitContributions;
-  const totalPRs = searchStats.prs ?? totals.totalPullRequestContributions;
-  const totalIssues = searchStats.issues ?? totals.totalIssueContributions;
+  const totalPRs = user.pullRequestSearch.issueCount ?? totals.totalPullRequestContributions;
+  const totalIssues = user.issueSearch.issueCount ?? totals.totalIssueContributions;
+
+  console.log(`Total commits: ${totalCommits}`);
+  console.log(`Total PRs: ${totalPRs}`);
+  console.log(`Total issues: ${totalIssues}`);
+  console.log(`Total contributions: ${totals.totalContributions}`);
 
   return {
     username: user.login,
