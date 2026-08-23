@@ -5,6 +5,7 @@ const TOKEN = process.env.GH_STATS_TOKEN || process.env.GITHUB_TOKEN;
 const API_URL = "https://api.github.com/graphql";
 const NOW = new Date();
 const START_YEAR = Number(process.env.GITHUB_STATS_START_YEAR || 2024);
+const REQUIRE_PRIVATE_REPO_ACCESS = process.env.REQUIRE_PRIVATE_REPO_ACCESS === "true";
 const YEARS = buildYears(START_YEAR, NOW.getUTCFullYear());
 
 if (!TOKEN) {
@@ -34,6 +35,7 @@ const [authorFilters, prCount, issueCount, languages] = await Promise.all([
   fetchIssueSearchCount(`type:issue author:${USERNAME}`),
   fetchLanguages(repos),
 ]);
+validateTokenAccess(repos, authorFilters);
 const totalCommits = await fetchTotalCommitsFromRepos(repos, authorFilters);
 const stats = buildStats(data, {
   commits: totalCommits,
@@ -264,6 +266,24 @@ async function fetchTotalCommitsFromRepos(repos, authorFilters) {
   console.log(`Branches checked: ${branchesChecked}`);
   console.log(`Unique commits found: ${seen.size}`);
   return seen.size;
+}
+
+function validateTokenAccess(repos, authorFilters) {
+  const privateRepoCount = repos.filter((repo) => repo.private).length;
+
+  if (REQUIRE_PRIVATE_REPO_ACCESS && privateRepoCount === 0) {
+    throw new Error([
+      "GH_STATS_TOKEN cannot access any private repositories.",
+      "The generated stats will not match your logged-in GitHub search counts.",
+      "Fix: update the GH_STATS_TOKEN repository secret with a token that has access to all repositories, including private repositories.",
+      "For a fine-grained token, set Repository access to All repositories and give read access to Contents, Metadata, Issues, and Pull requests.",
+      "For commits made with different Git emails, also add Account permission: Email addresses read-only.",
+    ].join(" "));
+  }
+
+  if (authorFilters.length === 1) {
+    console.warn("Only one author filter is available. Add Email addresses read-only permission to GH_STATS_TOKEN if commits are missing.");
+  }
 }
 
 async function fetchRepoBranches(repo) {
