@@ -463,12 +463,15 @@ function renderLanguageRows(languages) {
 async function updateReadmeTimestamp(updatedAt) {
   const readme = await readFile("README.md", "utf8");
   const marker = `<!-- analytics-updated: ${updatedAt} -->`;
-  const updated = readme.includes("<!-- analytics-updated:")
-    ? readme.replace(/<!-- analytics-updated: .*? -->/, marker)
-    : readme.replace(
-      /(<img src="\.\/github-analytics\.svg" alt="GitHub Analytics" width="860" \/>\s*)/,
-      `$1 ${marker}\n`,
-    );
+  const cacheKey = updatedAt.replace(/\D/g, "");
+  const imageTag = `<img src="./github-analytics.svg?v=${cacheKey}" alt="GitHub Analytics" width="860" />`;
+  const withImageCacheBust = readme.replace(
+    /<img src="\.\/github-analytics\.svg(?:\?v=[^"]+)?" alt="GitHub Analytics" width="860" \/>/,
+    imageTag,
+  );
+  const updated = withImageCacheBust.includes("<!-- analytics-updated:")
+    ? withImageCacheBust.replace(/<!-- analytics-updated: .*? -->/, marker)
+    : withImageCacheBust.replace(`${imageTag}\n`, `${imageTag}\n ${marker}\n`);
 
   await writeFile("README.md", updated, "utf8");
 }
