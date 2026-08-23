@@ -26,17 +26,15 @@ const LANGUAGE_COLORS = {
   Dart: "#00B4AB",
 };
 
-const [data, searchStats] = await Promise.all([
-  fetchAnalytics(),
-  fetchSearchStats(),
-]);
-const stats = buildStats(data, searchStats);
+const data = await fetchAnalytics();
+const stats = buildStats(data);
 await writeFile("github-analytics.svg", renderSvg(stats), "utf8");
 await updateReadmeTimestamp(stats.updatedAt);
 
 async function fetchAnalytics() {
   const contributionFields = YEARS.map(({ alias, from, to }) => `
         ${alias}: contributionsCollection(from: "${from}", to: "${to}") {
+          restrictedContributionsCount
           totalCommitContributions
           totalIssueContributions
           totalPullRequestContributions
@@ -130,41 +128,7 @@ async function fetchAnalytics() {
   return payload.data.user;
 }
 
-async function fetchSearchStats() {
-  const [commits, prs, issues] = await Promise.allSettled([
-    fetchSearchCount("commits", `author:${USERNAME}`),
-    fetchSearchCount("issues", `author:${USERNAME} type:pr`),
-    fetchSearchCount("issues", `author:${USERNAME} type:issue`),
-  ]);
-
-  return {
-    commits: valueOrNull(commits),
-    prs: valueOrNull(prs),
-    issues: valueOrNull(issues),
-  };
-}
-
-async function fetchSearchCount(type, query) {
-  const params = new URLSearchParams({ q: query, per_page: "1" });
-  const response = await fetch(`https://api.github.com/search/${type}?${params}`, {
-    headers: {
-      Authorization: `bearer ${TOKEN}`,
-      Accept: type === "commits"
-        ? "application/vnd.github.cloak-preview+json"
-        : "application/vnd.github+json",
-      "User-Agent": `${USERNAME}-analytics-action`,
-    },
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(JSON.stringify(payload, null, 2));
-  }
-
-  return payload.total_count || 0;
-}
-
-function buildStats(user, searchStats) {
+function buildStats(user) {
   const repos = user.repositories.nodes;
   const contributionYears = YEARS.map(({ alias }) => user[alias]);
   const totals = sumContributionYears(contributionYears);
@@ -177,9 +141,9 @@ function buildStats(user, searchStats) {
   const streaks = calculateStreaks(days);
   const languages = calculateLanguages(repos);
   const totalStars = repos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
-  const totalCommits = searchStats.commits ?? totals.totalCommitContributions;
-  const totalPRs = searchStats.prs ?? totals.totalPullRequestContributions;
-  const totalIssues = searchStats.issues ?? totals.totalIssueContributions;
+  const totalCommits = totals.totalCommitContributions;
+  const totalPRs = totals.totalPullRequestContributions;
+  const totalIssues = totals.totalIssueContributions;
 
   return {
     username: user.login,
@@ -238,13 +202,18 @@ function sumContributionYears(contributionYears) {
       totals.totalPullRequestContributions + contributions.totalPullRequestContributions,
     totalRepositoryContributions:
       totals.totalRepositoryContributions + contributions.totalRepositoryContributions,
+    restrictedContributionsCount:
+      totals.restrictedContributionsCount + contributions.restrictedContributionsCount,
     totalContributions:
-      totals.totalContributions + contributions.contributionCalendar.totalContributions,
+      totals.totalContributions
+      + contributions.contributionCalendar.totalContributions
+      + contributions.restrictedContributionsCount,
   }), {
     totalCommitContributions: 0,
     totalIssueContributions: 0,
     totalPullRequestContributions: 0,
     totalRepositoryContributions: 0,
+    restrictedContributionsCount: 0,
     totalContributions: 0,
   });
 }
@@ -435,15 +404,6 @@ function buildYears(startYear, endYear) {
       to: to.toISOString(),
     };
   });
-}
-
-function valueOrNull(result) {
-  if (result.status === "fulfilled") {
-    return result.value;
-  }
-
-  console.warn(result.reason);
-  return null;
 }
 
 function escapeXml(value) {
