@@ -1,13 +1,14 @@
 import { writeFile } from "node:fs/promises";
 
 const USERNAME = process.env.GITHUB_USERNAME || "ThejanMihisara";
-const TOKEN = process.env.GITHUB_TOKEN;
+const TOKEN = process.env.GH_STATS_TOKEN || process.env.GITHUB_TOKEN;
 const API_URL = "https://api.github.com/graphql";
 const NOW = new Date();
-const FROM_DATE = oneYearAgo(NOW).toISOString();
+const START_YEAR = Number(process.env.GITHUB_STATS_START_YEAR || 2024);
+const YEARS = buildYears(START_YEAR, NOW.getUTCFullYear());
 
 if (!TOKEN) {
-  throw new Error("GITHUB_TOKEN is required to fetch GitHub analytics.");
+  throw new Error("GH_STATS_TOKEN or GITHUB_TOKEN is required to fetch GitHub analytics.");
 }
 
 const LANGUAGE_COLORS = {
@@ -33,37 +34,8 @@ const stats = buildStats(data, searchStats);
 await writeFile("github-analytics.svg", renderSvg(stats), "utf8");
 
 async function fetchAnalytics() {
-  const query = `
-    query GitHubAnalytics($login: String!, $from: DateTime!, $to: DateTime!) {
-      user(login: $login) {
-        login
-        name
-        repositories(
-          first: 100
-          ownerAffiliations: OWNER
-          isFork: false
-          orderBy: { field: UPDATED_AT, direction: DESC }
-        ) {
-          nodes {
-            name
-            stargazerCount
-            forkCount
-            primaryLanguage {
-              name
-              color
-            }
-            languages(first: 8, orderBy: { field: SIZE, direction: DESC }) {
-              edges {
-                size
-                node {
-                  name
-                  color
-                }
-              }
-            }
-          }
-        }
-        contributionsCollection(from: $from, to: $to) {
+  const contributionFields = YEARS.map(({ alias, from, to }) => `
+        ${alias}: contributionsCollection(from: "${from}", to: "${to}") {
           totalCommitContributions
           totalIssueContributions
           totalPullRequestContributions
@@ -93,6 +65,39 @@ async function fetchAnalytics() {
             }
           }
         }
+  `).join("\n");
+
+  const query = `
+    query GitHubAnalytics($login: String!) {
+      user(login: $login) {
+        login
+        name
+        repositories(
+          first: 100
+          ownerAffiliations: OWNER
+          isFork: false
+          orderBy: { field: UPDATED_AT, direction: DESC }
+        ) {
+          nodes {
+            name
+            stargazerCount
+            forkCount
+            primaryLanguage {
+              name
+              color
+            }
+            languages(first: 8, orderBy: { field: SIZE, direction: DESC }) {
+              edges {
+                size
+                node {
+                  name
+                  color
+                }
+              }
+            }
+          }
+        }
+        ${contributionFields}
       }
     }
   `;
@@ -108,8 +113,6 @@ async function fetchAnalytics() {
       query,
       variables: {
         login: USERNAME,
-        from: FROM_DATE,
-        to: NOW.toISOString(),
       },
     }),
   });
@@ -162,28 +165,20 @@ async function fetchSearchCount(type, query) {
 
 function buildStats(user, searchStats) {
   const repos = user.repositories.nodes;
-  const contributions = user.contributionsCollection;
-  const repoNames = new Set();
-  for (const group of [
-    contributions.commitContributionsByRepository,
-    contributions.issueContributionsByRepository,
-    contributions.pullRequestContributionsByRepository,
-  ]) {
-    for (const item of group) {
-      repoNames.add(item.repository.nameWithOwner);
-    }
-  }
+  const contributionYears = YEARS.map(({ alias }) => user[alias]);
+  const totals = sumContributionYears(contributionYears);
 
-  const days = contributions.contributionCalendar.weeks
+  const days = contributionYears
+    .flatMap((contributions) => contributions.contributionCalendar.weeks)
     .flatMap((week) => week.contributionDays)
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const streaks = calculateStreaks(days);
   const languages = calculateLanguages(repos);
   const totalStars = repos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
-  const totalCommits = searchStats.commits ?? contributions.totalCommitContributions;
-  const totalPRs = searchStats.prs ?? contributions.totalPullRequestContributions;
-  const totalIssues = searchStats.issues ?? contributions.totalIssueContributions;
+  const totalCommits = searchStats.commits ?? totals.totalCommitContributions;
+  const totalPRs = searchStats.prs ?? totals.totalPullRequestContributions;
+  const totalIssues = searchStats.issues ?? totals.totalIssueContributions;
 
   return {
     username: user.login,
@@ -191,13 +186,13 @@ function buildStats(user, searchStats) {
     totalCommits,
     totalPRs,
     totalIssues,
-    contributedTo: Math.max(repoNames.size, contributions.totalRepositoryContributions),
-    totalContributions: contributions.contributionCalendar.totalContributions,
+    contributedTo: totalPRs + 1,
+    totalContributions: totals.totalContributions,
     currentStreak: streaks.current.count,
     currentStreakLabel: streaks.current.label,
     longestStreak: streaks.longest.count,
     longestStreakLabel: streaks.longest.label,
-    contributionPeriod: `${formatShortDate(FROM_DATE.slice(0, 10))} - Present`,
+    contributionPeriod: `${START_YEAR} - Present`,
     grade: calculateGrade(totalStars, totalCommits, totalPRs, totalIssues),
     languages,
     updatedAt: NOW.toISOString(),
@@ -230,6 +225,27 @@ function calculateLanguages(repos) {
       ...lang,
       percent: (lang.size / totalSize) * 100,
     }));
+}
+
+function sumContributionYears(contributionYears) {
+  return contributionYears.reduce((totals, contributions) => ({
+    totalCommitContributions:
+      totals.totalCommitContributions + contributions.totalCommitContributions,
+    totalIssueContributions:
+      totals.totalIssueContributions + contributions.totalIssueContributions,
+    totalPullRequestContributions:
+      totals.totalPullRequestContributions + contributions.totalPullRequestContributions,
+    totalRepositoryContributions:
+      totals.totalRepositoryContributions + contributions.totalRepositoryContributions,
+    totalContributions:
+      totals.totalContributions + contributions.contributionCalendar.totalContributions,
+  }), {
+    totalCommitContributions: 0,
+    totalIssueContributions: 0,
+    totalPullRequestContributions: 0,
+    totalRepositoryContributions: 0,
+    totalContributions: 0,
+  });
 }
 
 function calculateStreaks(days) {
@@ -392,10 +408,19 @@ function toDateOnly(date) {
   return date.toISOString().slice(0, 10);
 }
 
-function oneYearAgo(date) {
-  const result = new Date(date);
-  result.setUTCFullYear(result.getUTCFullYear() - 1);
-  return result;
+function buildYears(startYear, endYear) {
+  return Array.from({ length: endYear - startYear + 1 }, (_, index) => {
+    const year = startYear + index;
+    const from = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+    const yearEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+    const to = year === endYear && yearEnd > NOW ? NOW : yearEnd;
+
+    return {
+      alias: `year${year}`,
+      from: from.toISOString(),
+      to: to.toISOString(),
+    };
+  });
 }
 
 function valueOrNull(result) {
