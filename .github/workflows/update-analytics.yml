@@ -17,25 +17,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Refresh analytics files
-        shell: pwsh
-        run: |
-          $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
-          $readme = Get-Content README.md -Raw
-          $readme = [regex]::Replace(
-            $readme,
-            'github-analytics\.svg\?v=[^"]+',
-            "github-analytics.svg?v=$stamp"
-          )
-          Set-Content README.md $readme -NoNewline
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-          $svg = Get-Content github-analytics.svg -Raw
-          if ($svg -match '<!-- updated: .*? -->') {
-            $svg = [regex]::Replace($svg, '<!-- updated: .*? -->', "<!-- updated: $stamp -->")
-          } else {
-            $svg = $svg -replace '<svg ', "<svg `n<!-- updated: $stamp -->`n"
-          }
-          Set-Content github-analytics.svg $svg -NoNewline
+      - name: Generate analytics SVG
+        run: node scripts/update-github-analytics.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ThejanMihisara
 
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
