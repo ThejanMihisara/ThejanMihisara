@@ -495,13 +495,16 @@ async function updateReadmeTimestamp(updatedAt) {
   const marker = `<!-- analytics-updated: ${updatedAt} -->`;
   const cacheKey = updatedAt.replace(/\D/g, "");
   const imageTag = `<img src="./github-analytics.svg?v=${cacheKey}" alt="GitHub Analytics" width="860" />`;
-  const withImageCacheBust = readme.replace(
-    /<img src="\.\/github-analytics\.svg(?:\?v=[^"]+)?" alt="GitHub Analytics" width="860" \/>/,
-    imageTag,
-  );
+  const imagePattern = /<img\b[^>]*src="\.\/github-analytics\.svg(?:\?v=[^"]*)?"[^>]*>/;
+
+  if (!imagePattern.test(readme)) {
+    throw new Error("README.md does not contain the GitHub analytics image tag.");
+  }
+
+  const withImageCacheBust = readme.replace(imagePattern, imageTag);
   const updated = withImageCacheBust.includes("<!-- analytics-updated:")
     ? withImageCacheBust.replace(/<!-- analytics-updated: .*? -->/, marker)
-    : withImageCacheBust.replace(`${imageTag}\n`, `${imageTag}\n ${marker}\n`);
+    : withImageCacheBust.replace(imageTag, `${imageTag}\n ${marker}`);
 
   await writeFile("README.md", updated, "utf8");
 }
