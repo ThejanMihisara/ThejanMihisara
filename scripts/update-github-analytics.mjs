@@ -5,6 +5,7 @@ const TOKEN = process.env.GH_STATS_TOKEN || process.env.GITHUB_TOKEN;
 const API_URL = "https://api.github.com/graphql";
 const NOW = new Date();
 const START_YEAR = Number(process.env.GITHUB_STATS_START_YEAR || 2024);
+const DISPLAY_TIME_ZONE = process.env.GITHUB_STATS_TIME_ZONE || "Asia/Colombo";
 const REQUIRE_PRIVATE_REPO_ACCESS = process.env.REQUIRE_PRIVATE_REPO_ACCESS === "true";
 const YEARS = buildYears(START_YEAR, NOW.getUTCFullYear());
 
@@ -336,34 +337,63 @@ function sumContributionYears(contributionYears) {
 }
 
 function calculateStreaks(days) {
-  let longest = { count: 0, start: null, end: null };
-  let active = { count: 0, start: null, end: null };
-
-  for (const day of days) {
-    if (day.contributionCount > 0) {
-      if (active.count === 0) {
-        active.start = day.date;
-      }
-      active.count += 1;
-      active.end = day.date;
-      if (active.count > longest.count) {
-        longest = { ...active };
-      }
-    } else {
-      active = { count: 0, start: null, end: null };
-    }
+  if (days.length === 0) {
+    return {
+      current: {
+        count: 0,
+        label: formatRange(null, null),
+      },
+      longest: {
+        count: 0,
+        label: "No streak yet",
+      },
+    };
   }
 
-  const today = toDateOnly(NOW);
-  const yesterday = toDateOnly(new Date(NOW.getTime() - 24 * 60 * 60 * 1000));
-  const current = active.end === today || active.end === yesterday
-    ? active
-    : { count: 0, start: null, end: null };
+  const counts = new Map(days.map((day) => [day.date, day.contributionCount]));
+  const firstDay = days[0].date;
+  const today = getDateInTimeZone(NOW, DISPLAY_TIME_ZONE);
+  const yesterday = shiftDateOnly(today, -1);
+  const currentDay = (counts.get(today) || 0) > 0
+    ? today
+    : ((counts.get(yesterday) || 0) > 0 ? yesterday : null);
+  const current = {
+    count: currentDay ? 1 : 0,
+    start: currentDay,
+    end: currentDay,
+  };
+
+  let longest = { count: 0, start: null, end: null };
+  let activeCount = 0;
+  let activeStart = null;
+  let cursor = firstDay;
+
+  while (cursor <= today) {
+    if ((counts.get(cursor) || 0) > 0) {
+      if (activeCount === 0) {
+        activeStart = cursor;
+      }
+      activeCount += 1;
+
+      if (activeCount > longest.count) {
+        longest = {
+          count: activeCount,
+          start: activeStart,
+          end: cursor,
+        };
+      }
+    } else {
+      activeCount = 0;
+      activeStart = null;
+    }
+
+    cursor = shiftDateOnly(cursor, 1);
+  }
 
   return {
     current: {
       count: current.count,
-      label: formatRange(current.start, current.end),
+      label: current.start ? formatShortDate(current.start) : formatRange(null, null),
     },
     longest: {
       count: longest.count,
@@ -502,13 +532,30 @@ function formatHumanDate(date) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "UTC",
+    timeZone: DISPLAY_TIME_ZONE,
     timeZoneName: "short",
   }).format(date);
 }
 
 function toDateOnly(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function getDateInTimeZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const partMap = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${partMap.year}-${partMap.month}-${partMap.day}`;
+}
+
+function shiftDateOnly(dateValue, offsetDays) {
+  const date = new Date(`${dateValue}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return toDateOnly(date);
 }
 
 function buildYears(startYear, endYear) {
