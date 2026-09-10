@@ -254,10 +254,33 @@ async function fetchRestJson(
       "User-Agent": `${USERNAME}-analytics-action`,
     },
   });
-  const payload = await response.json();
+  const body = await response.text();
+  let payload = null;
+
+  if (body) {
+    try {
+      payload = JSON.parse(body);
+    } catch (error) {
+      const message = `${context}: failed to parse JSON response (${error.message})`;
+      if (optional) {
+        console.warn(`Skipped ${message}`);
+        return null;
+      }
+      throw new Error(message);
+    }
+  }
 
   if (!response.ok) {
-    const message = `${context}: ${JSON.stringify(payload)}`;
+    const message = `${context}: ${payload ? JSON.stringify(payload) : `HTTP ${response.status}`}`;
+    if (optional) {
+      console.warn(`Skipped ${message}`);
+      return null;
+    }
+    throw new Error(message);
+  }
+
+  if (payload === null) {
+    const message = `${context}: empty response body (HTTP ${response.status})`;
     if (optional) {
       console.warn(`Skipped ${message}`);
       return null;
