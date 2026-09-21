@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { execSync } from "node:child_process";
 
 const USERNAME = process.env.GITHUB_USERNAME || "ThejanMihisara";
 const TOKEN = process.env.GH_STATS_TOKEN || process.env.GITHUB_TOKEN;
@@ -300,13 +301,25 @@ async function fetchRestJson(
 function buildStats(user, searchStats, repos) {
   const contributionYears = YEARS.map(({ alias }) => user[alias]);
   const totals = sumContributionYears(contributionYears);
+  const botCommitCounts = getBotCommitCountsByDate();
 
   const days = contributionYears
     .flatMap((contributions) => contributions.contributionCalendar.weeks)
     .flatMap((week) => week.contributionDays)
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const streaks = calculateStreaks(days);
+  const cleanedDays = days.map((day) => {
+    const botCount = botCommitCounts.get(day.date) || 0;
+    return {
+      date: day.date,
+      contributionCount: Math.max(0, day.contributionCount - botCount),
+    };
+  });
+
+  const totalBotContributions = [...botCommitCounts.values()].reduce((sum, count) => sum + count, 0);
+  const totalContributions = Math.max(0, totals.totalContributions - totalBotContributions);
+
+  const streaks = calculateStreaks(cleanedDays);
   const languages = searchStats.languages;
   const totalStars = repos
     .filter((repo) => !repo.fork)
@@ -318,7 +331,9 @@ function buildStats(user, searchStats, repos) {
   console.log(`Total commits: ${totalCommits}`);
   console.log(`Total PRs: ${totalPRs}`);
   console.log(`Total issues: ${totalIssues}`);
-  console.log(`Total contributions: ${totals.totalContributions}`);
+  console.log(`Total contributions: ${totalContributions}`);
+  console.log(`Largest streak: ${streaks.largest.count} days (${streaks.largest.label})`);
+  console.log(`Current streak: ${streaks.current.count} days (${streaks.current.label})`);
 
   return {
     username: user.login,
@@ -327,7 +342,7 @@ function buildStats(user, searchStats, repos) {
     totalPRs,
     totalIssues,
     contributedTo: totalPRs + 1,
-    totalContributions: totals.totalContributions,
+    totalContributions,
     currentStreak: streaks.current.count,
     currentStreakLabel: streaks.current.label,
     largestStreak: streaks.largest.count,
@@ -530,6 +545,22 @@ function renderLanguageRows(languages) {
     return `<circle cx="${x}" cy="${y}" r="5" fill="${escapeXml(lang.color)}"/>
 <text x="${x + 11}" y="${y + 4}" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">${escapeXml(lang.name)} (${lang.percent.toFixed(2)}%)</text>`;
   }).join("\n");
+}
+
+function getBotCommitCountsByDate() {
+  const counts = new Map();
+  try {
+    const stdout = execSync('git log --grep="Update GitHub analytics" --format="%cI"', { encoding: "utf8" });
+    for (const line of stdout.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const date = getDateInTimeZone(new Date(trimmed), DISPLAY_TIME_ZONE);
+      counts.set(date, (counts.get(date) || 0) + 1);
+    }
+  } catch (error) {
+    console.warn("Could not read bot commits from git log:", error.message);
+  }
+  return counts;
 }
 
 function runLargestStreakSampleTest() {
