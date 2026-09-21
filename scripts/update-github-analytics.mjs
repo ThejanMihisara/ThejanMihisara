@@ -370,8 +370,7 @@ function sumContributionYears(contributionYears) {
       totals.restrictedContributionsCount + contributions.restrictedContributionsCount,
     totalContributions:
       totals.totalContributions
-      + contributions.contributionCalendar.totalContributions
-      + contributions.restrictedContributionsCount,
+      + contributions.contributionCalendar.totalContributions,
   }), {
     totalCommitContributions: 0,
     totalIssueContributions: 0,
