@@ -7,7 +7,13 @@ const NOW = new Date();
 const START_YEAR = Number(process.env.GITHUB_STATS_START_YEAR || 2024);
 const DISPLAY_TIME_ZONE = process.env.GITHUB_STATS_TIME_ZONE || "Asia/Colombo";
 const REQUIRE_PRIVATE_REPO_ACCESS = process.env.REQUIRE_PRIVATE_REPO_ACCESS === "true";
+const RUN_LARGEST_STREAK_SAMPLE_TEST = process.env.TEST_LARGEST_STREAK === "true";
 const YEARS = buildYears(START_YEAR, NOW.getUTCFullYear());
+
+if (RUN_LARGEST_STREAK_SAMPLE_TEST) {
+  runLargestStreakSampleTest();
+  process.exit(0);
+}
 
 if (!TOKEN) {
   throw new Error("GH_STATS_TOKEN or GITHUB_TOKEN is required to fetch GitHub analytics.");
@@ -324,6 +330,8 @@ function buildStats(user, searchStats, repos) {
     totalContributions: totals.totalContributions,
     currentStreak: streaks.current.count,
     currentStreakLabel: streaks.current.label,
+    largestStreak: streaks.largest.count,
+    largestStreakLabel: streaks.largest.label,
     longestStreak: streaks.longest.count,
     longestStreakLabel: streaks.longest.label,
     contributionPeriod: `${START_YEAR} - Present`,
@@ -360,21 +368,24 @@ function sumContributionYears(contributionYears) {
 }
 
 function calculateStreaks(days) {
+  const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+  const largest = calculateLargestStreak(sortedDays);
+
   if (days.length === 0) {
     return {
       current: {
         count: 0,
         label: formatRange(null, null),
       },
+      largest,
       longest: {
-        count: 0,
-        label: "No streak yet",
+        count: largest.count,
+        label: largest.label,
       },
     };
   }
 
-  const counts = new Map(days.map((day) => [day.date, day.contributionCount]));
-  const firstDay = days[0].date;
+  const counts = new Map(sortedDays.map((day) => [day.date, day.contributionCount]));
   const today = getDateInTimeZone(NOW, DISPLAY_TIME_ZONE);
   const yesterday = shiftDateOnly(today, -1);
   const currentDay = (counts.get(today) || 0) > 0
@@ -386,42 +397,50 @@ function calculateStreaks(days) {
     end: currentDay,
   };
 
-  let longest = { count: 0, start: null, end: null };
-  let activeCount = 0;
-  let activeStart = null;
-  let cursor = firstDay;
-
-  while (cursor <= today) {
-    if ((counts.get(cursor) || 0) > 0) {
-      if (activeCount === 0) {
-        activeStart = cursor;
-      }
-      activeCount += 1;
-
-      if (activeCount > longest.count) {
-        longest = {
-          count: activeCount,
-          start: activeStart,
-          end: cursor,
-        };
-      }
-    } else {
-      activeCount = 0;
-      activeStart = null;
-    }
-
-    cursor = shiftDateOnly(cursor, 1);
-  }
-
   return {
     current: {
       count: current.count,
       label: current.start ? formatShortDate(current.start) : formatRange(null, null),
     },
+    largest,
     longest: {
-      count: longest.count,
-      label: formatRange(longest.start, longest.end),
+      count: largest.count,
+      label: largest.label,
     },
+  };
+}
+
+function calculateLargestStreak(days) {
+  let currentStreak = 0;
+  let currentStart = null;
+  let largestStreak = 0;
+  let largestStart = null;
+  let largestEnd = null;
+
+  [...days]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .forEach((day) => {
+      if (day.contributionCount > 0) {
+        if (currentStreak === 0) {
+          currentStart = day.date;
+        }
+
+        currentStreak += 1;
+
+        if (currentStreak > largestStreak) {
+          largestStreak = currentStreak;
+          largestStart = currentStart;
+          largestEnd = day.date;
+        }
+      } else {
+        currentStreak = 0;
+        currentStart = null;
+      }
+    });
+
+  return {
+    count: largestStreak,
+    label: largestStreak > 0 ? formatRange(largestStart, largestEnd) : "No streak yet",
   };
 }
 
@@ -464,9 +483,9 @@ ${statLine(156, "#", "Contributed to:", stats.contributedTo)}
 <text x="212" y="299" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">${stats.currentStreak}</text>
 <text x="212" y="345" fill="#ff9800" font-size="11" font-weight="700" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Current Streak</text>
 <text x="212" y="368" fill="#8b949e" font-size="9" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">${escapeXml(stats.currentStreakLabel)}</text>
-<text x="344" y="306" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">${stats.longestStreak}</text>
-<text x="344" y="338" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Longest Streak</text>
-<text x="344" y="361" fill="#8b949e" font-size="8" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">${escapeXml(stats.longestStreakLabel)}</text>
+<text x="344" y="306" fill="#ffffff" font-size="24" font-weight="800" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">${stats.largestStreak}</text>
+<text x="344" y="338" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Largest Streak: ${stats.largestStreak} days</text>
+<text x="344" y="361" fill="#8b949e" font-size="8" font-weight="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">${escapeXml(stats.largestStreakLabel)}</text>
 
 <rect x="468" y="120" width="330" height="180" rx="4" fill="#071126" stroke="#c9d1d9"/>
 <text x="492" y="154" fill="#00aaff" font-size="18" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">My Programming Languages</text>
@@ -511,6 +530,34 @@ function renderLanguageRows(languages) {
     return `<circle cx="${x}" cy="${y}" r="5" fill="${escapeXml(lang.color)}"/>
 <text x="${x + 11}" y="${y + 4}" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">${escapeXml(lang.name)} (${lang.percent.toFixed(2)}%)</text>`;
   }).join("\n");
+}
+
+function runLargestStreakSampleTest() {
+  const sampleDays = [
+    { date: "2026-01-01", contributionCount: 5 },
+    { date: "2026-01-02", contributionCount: 3 },
+    { date: "2026-01-03", contributionCount: 0 },
+    { date: "2026-01-04", contributionCount: 2 },
+    { date: "2026-01-05", contributionCount: 1 },
+    { date: "2026-01-06", contributionCount: 4 },
+  ];
+  const emptyDays = [
+    { date: "2026-01-01", contributionCount: 0 },
+    { date: "2026-01-02", contributionCount: 0 },
+  ];
+  const sampleResult = calculateLargestStreak(sampleDays);
+  const emptyResult = calculateLargestStreak(emptyDays);
+
+  if (sampleResult.count !== 3) {
+    throw new Error(`Expected sample largest streak to be 3, got ${sampleResult.count}.`);
+  }
+
+  if (emptyResult.count !== 0 || emptyResult.label !== "No streak yet") {
+    throw new Error(`Expected empty largest streak to be 0 with no-streak label, got ${JSON.stringify(emptyResult)}.`);
+  }
+
+  console.log(`Largest Streak: ${sampleResult.count} days`);
+  console.log(`No-contribution Largest Streak: ${emptyResult.count} days`);
 }
 
 async function updateReadmeTimestamp(updatedAt) {
