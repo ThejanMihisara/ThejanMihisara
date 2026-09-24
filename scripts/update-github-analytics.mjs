@@ -9,6 +9,7 @@ const START_YEAR = Number(process.env.GITHUB_STATS_START_YEAR || 2024);
 const DISPLAY_TIME_ZONE = process.env.GITHUB_STATS_TIME_ZONE || "Asia/Colombo";
 const REQUIRE_PRIVATE_REPO_ACCESS = process.env.REQUIRE_PRIVATE_REPO_ACCESS === "true";
 const RUN_LARGEST_STREAK_SAMPLE_TEST = process.env.TEST_LARGEST_STREAK === "true";
+const HISTORICAL_BOT_CUTOFF_DATE = process.env.HISTORICAL_BOT_CUTOFF_DATE || "2026-09-21";
 const YEARS = buildYears(START_YEAR, NOW.getUTCFullYear());
 
 if (RUN_LARGEST_STREAK_SAMPLE_TEST) {
@@ -381,7 +382,7 @@ function sumContributionYears(contributionYears) {
   });
 }
 
-function calculateStreaks(days) {
+function calculateStreaks(days, asOfDate = NOW) {
   const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
   const largest = calculateLargestStreak(sortedDays);
 
@@ -400,21 +401,35 @@ function calculateStreaks(days) {
   }
 
   const counts = new Map(sortedDays.map((day) => [day.date, day.contributionCount]));
-  const today = getDateInTimeZone(NOW, DISPLAY_TIME_ZONE);
+  const today = getDateInTimeZone(asOfDate, DISPLAY_TIME_ZONE);
   const yesterday = shiftDateOnly(today, -1);
-  const currentDay = (counts.get(today) || 0) > 0
+  const currentEnd = (counts.get(today) || 0) > 0
     ? today
     : ((counts.get(yesterday) || 0) > 0 ? yesterday : null);
+
+  let currentCount = 0;
+  let currentStart = null;
+
+  if (currentEnd) {
+    let cursor = currentEnd;
+    while ((counts.get(cursor) || 0) > 0) {
+      currentCount += 1;
+      currentStart = cursor;
+      cursor = shiftDateOnly(cursor, -1);
+    }
+  }
+
   const current = {
-    count: currentDay ? 1 : 0,
-    start: currentDay,
-    end: currentDay,
+    count: currentCount,
+    start: currentStart,
+    end: currentEnd,
+    label: formatRange(currentStart, currentEnd),
   };
 
   return {
     current: {
       count: current.count,
-      label: current.start ? formatShortDate(current.start) : formatRange(null, null),
+      label: current.label,
     },
     largest,
     longest: {
@@ -554,7 +569,12 @@ function getBotCommitCountsByDate() {
       const trimmed = line.trim();
       if (!trimmed) continue;
       const date = getDateInTimeZone(new Date(trimmed), DISPLAY_TIME_ZONE);
-      counts.set(date, (counts.get(date) || 0) + 1);
+      // Historical bot commits before the cutoff were counted by GitHub.
+      // Commits after this cutoff are authored by github-actions[bot] and not counted by GitHub,
+      // so deducting them would incorrectly subtract legitimate user contributions.
+      if (date <= HISTORICAL_BOT_CUTOFF_DATE) {
+        counts.set(date, (counts.get(date) || 0) + 1);
+      }
     }
   } catch (error) {
     console.warn("Could not read bot commits from git log:", error.message);
@@ -586,7 +606,33 @@ function runLargestStreakSampleTest() {
     throw new Error(`Expected empty largest streak to be 0 with no-streak label, got ${JSON.stringify(emptyResult)}.`);
   }
 
+  // Test current streak when today is active
+  const todayActiveResult = calculateStreaks(sampleDays, new Date("2026-01-06T12:00:00Z"));
+  if (todayActiveResult.current.count !== 3) {
+    throw new Error(`Expected today-active current streak to be 3, got ${todayActiveResult.current.count}.`);
+  }
+  if (todayActiveResult.current.label !== "Jan 4, 2026 - Jan 6, 2026") {
+    throw new Error(`Expected today-active current streak label to be 'Jan 4, 2026 - Jan 6, 2026', got '${todayActiveResult.current.label}'.`);
+  }
+
+  // Test current streak when active streak ended yesterday
+  const yesterdayActiveResult = calculateStreaks(sampleDays, new Date("2026-01-07T12:00:00Z"));
+  if (yesterdayActiveResult.current.count !== 3) {
+    throw new Error(`Expected yesterday-active current streak to be 3, got ${yesterdayActiveResult.current.count}.`);
+  }
+  if (yesterdayActiveResult.current.label !== "Jan 4, 2026 - Jan 6, 2026") {
+    throw new Error(`Expected yesterday-active current streak label to be 'Jan 4, 2026 - Jan 6, 2026', got '${yesterdayActiveResult.current.label}'.`);
+  }
+
+  // Test broken streak (no activity today or yesterday)
+  const brokenResult = calculateStreaks(sampleDays, new Date("2026-01-08T12:00:00Z"));
+  if (brokenResult.current.count !== 0 || brokenResult.current.label !== "No active streak") {
+    throw new Error(`Expected broken streak to be 0 / No active streak, got ${JSON.stringify(brokenResult.current)}.`);
+  }
+
   console.log(`Largest Streak: ${sampleResult.count} days`);
+  console.log(`Current Streak (today active): ${todayActiveResult.current.count} days (${todayActiveResult.current.label})`);
+  console.log(`Current Streak (yesterday active): ${yesterdayActiveResult.current.count} days (${yesterdayActiveResult.current.label})`);
   console.log(`No-contribution Largest Streak: ${emptyResult.count} days`);
 }
 
