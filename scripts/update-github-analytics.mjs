@@ -45,7 +45,7 @@ const [authorFilters, prCount, issueCount, languages] = await Promise.all([
   fetchLanguages(repos),
 ]);
 validateTokenAccess(repos, authorFilters);
-const totalCommits = await fetchCommitSearchCount(`author:${USERNAME} NOT "Update GitHub analytics"`);
+const totalCommits = await fetchCommitSearchCount(`author:${USERNAME}`);
 const stats = buildStats(data, {
   commits: totalCommits,
   prs: prCount,
