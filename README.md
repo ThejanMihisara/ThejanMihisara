@@ -34,8 +34,8 @@
 <h3 align="center"> Analytics 📊 </h3>
 
 <p align="center">
- <img src="https://raw.githubusercontent.com/ThejanMihisara/ThejanMihisara/main/github-analytics.svg?v=20260928053611297" alt="GitHub Analytics" width="860" />
- <!-- analytics-updated: 2026-09-28T05:36:11.297Z -->
+ <img src="https://raw.githubusercontent.com/ThejanMihisara/ThejanMihisara/main/github-analytics.svg?v=20260929055435909" alt="GitHub Analytics" width="860" />
+ <!-- analytics-updated: 2026-09-29T05:54:35.909Z -->
 </p>
 
 ---
