@@ -45,7 +45,7 @@ const [authorFilters, prCount, issueCount, languages] = await Promise.all([
   fetchLanguages(repos),
 ]);
 validateTokenAccess(repos, authorFilters);
-const totalCommits = await fetchCommitSearchCount(`author:${USERNAME}`);
+const totalCommits = await fetchCommitSearchCount(buildAuthorSearchQuery(authorFilters));
 const stats = buildStats(data, {
   commits: totalCommits,
   prs: prCount,
@@ -190,6 +190,17 @@ async function fetchCommitSearchCount(query) {
     "application/vnd.github.cloak-preview+json",
   );
   return payload.total_count ?? 0;
+}
+
+function buildAuthorSearchQuery(authorFilters) {
+  const filters = [...new Set(authorFilters.map((filter) => filter.trim()).filter(Boolean))];
+  if (filters.length === 0) {
+    return `author:${USERNAME}`;
+  }
+
+  return filters
+    .map((filter) => filter.includes("@") ? `author-email:${filter}` : `author:${filter}`)
+    .join(" OR ");
 }
 
 async function fetchLanguages(repos) {
@@ -583,6 +594,16 @@ function getBotCommitCountsByDate() {
 }
 
 function runLargestStreakSampleTest() {
+  const authorQuery = buildAuthorSearchQuery([
+    "ThejanMihisara",
+    "thejan@example.com",
+    "ThejanMihisara",
+    "",
+  ]);
+  if (authorQuery !== "author:ThejanMihisara OR author-email:thejan@example.com") {
+    throw new Error(`Expected commit author query to include unique login/email filters, got '${authorQuery}'.`);
+  }
+
   const sampleDays = [
     { date: "2026-01-01", contributionCount: 5 },
     { date: "2026-01-02", contributionCount: 3 },
