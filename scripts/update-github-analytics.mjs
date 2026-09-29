@@ -45,7 +45,7 @@ const [authorFilters, prCount, issueCount, languages] = await Promise.all([
   fetchLanguages(repos),
 ]);
 validateTokenAccess(repos, authorFilters);
-const totalCommits = await fetchCommitSearchCount(buildAuthorSearchQuery(authorFilters));
+const totalCommits = await fetchCommitSearchCount(buildAuthorSearchQueries(authorFilters));
 const stats = buildStats(data, {
   commits: totalCommits,
   prs: prCount,
@@ -181,26 +181,52 @@ async function fetchIssueSearchCount(query) {
   return payload?.total_count ?? 0;
 }
 
-async function fetchCommitSearchCount(query) {
-  const params = new URLSearchParams({ q: query, per_page: "1" });
-  const payload = await fetchRestJson(
-    `https://api.github.com/search/commits?${params}`,
-    query,
-    false,
-    "application/vnd.github.cloak-preview+json",
-  );
-  return payload.total_count ?? 0;
+async function fetchCommitSearchCount(queries) {
+  const commitKeys = new Set();
+
+  for (const query of queries) {
+    let page = 1;
+
+    while (true) {
+      const params = new URLSearchParams({
+        q: query,
+        per_page: "100",
+        page: String(page),
+      });
+      const payload = await fetchRestJson(
+        `https://api.github.com/search/commits?${params}`,
+        `${query} page ${page}`,
+        false,
+        "application/vnd.github.cloak-preview+json",
+      );
+      const items = Array.isArray(payload.items) ? payload.items : [];
+
+      for (const item of items) {
+        if (!item?.sha) {
+          continue;
+        }
+        commitKeys.add(`${item.repository?.full_name || "unknown"}@${item.sha}`);
+      }
+
+      if (items.length < 100 || page >= 10) {
+        break;
+      }
+
+      page += 1;
+    }
+  }
+
+  return commitKeys.size;
 }
 
-function buildAuthorSearchQuery(authorFilters) {
+function buildAuthorSearchQueries(authorFilters) {
   const filters = [...new Set(authorFilters.map((filter) => filter.trim()).filter(Boolean))];
   if (filters.length === 0) {
-    return `author:${USERNAME}`;
+    return [`author:${USERNAME}`];
   }
 
   return filters
-    .map((filter) => filter.includes("@") ? `author-email:${filter}` : `author:${filter}`)
-    .join(" OR ");
+    .map((filter) => filter.includes("@") ? `author-email:${filter}` : `author:${filter}`);
 }
 
 async function fetchLanguages(repos) {
@@ -594,14 +620,15 @@ function getBotCommitCountsByDate() {
 }
 
 function runLargestStreakSampleTest() {
-  const authorQuery = buildAuthorSearchQuery([
+  const authorQueries = buildAuthorSearchQueries([
     "ThejanMihisara",
     "thejan@example.com",
     "ThejanMihisara",
     "",
   ]);
-  if (authorQuery !== "author:ThejanMihisara OR author-email:thejan@example.com") {
-    throw new Error(`Expected commit author query to include unique login/email filters, got '${authorQuery}'.`);
+  const expectedAuthorQueries = ["author:ThejanMihisara", "author-email:thejan@example.com"];
+  if (JSON.stringify(authorQueries) !== JSON.stringify(expectedAuthorQueries)) {
+    throw new Error(`Expected commit author queries to include unique login/email filters, got '${authorQueries.join(", ")}'.`);
   }
 
   const sampleDays = [
