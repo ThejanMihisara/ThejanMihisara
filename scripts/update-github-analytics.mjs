@@ -45,9 +45,15 @@ const [authorFilters, prCount, issueCount, languages] = await Promise.all([
   fetchLanguages(repos),
 ]);
 validateTokenAccess(repos, authorFilters);
-const totalCommits = await fetchCommitSearchCount(buildAuthorSearchQueries(authorFilters));
+const authorQueries = buildAuthorSearchQueries(authorFilters);
+const [searchCommitCount, branchCommitCount] = await Promise.all([
+  fetchCommitSearchCount(authorQueries),
+  fetchBranchCommitCount(repos, authorFilters),
+]);
 const stats = buildStats(data, {
-  commits: totalCommits,
+  commits: Math.max(searchCommitCount, branchCommitCount),
+  searchCommits: searchCommitCount,
+  branchCommits: branchCommitCount,
   prs: prCount,
   issues: issueCount,
   languages,
@@ -183,6 +189,7 @@ async function fetchIssueSearchCount(query) {
 
 async function fetchCommitSearchCount(queries) {
   const commitKeys = new Set();
+  let highestSearchTotal = 0;
 
   for (const query of queries) {
     let page = 1;
@@ -199,6 +206,7 @@ async function fetchCommitSearchCount(queries) {
         false,
         "application/vnd.github.cloak-preview+json",
       );
+      highestSearchTotal = Math.max(highestSearchTotal, payload.total_count ?? 0);
       const items = Array.isArray(payload.items) ? payload.items : [];
 
       for (const item of items) {
@@ -216,7 +224,94 @@ async function fetchCommitSearchCount(queries) {
     }
   }
 
+  return Math.max(highestSearchTotal, commitKeys.size);
+}
+
+async function fetchBranchCommitCount(repos, authorFilters) {
+  const filters = [...new Set(authorFilters.map((filter) => filter.trim()).filter(Boolean))];
+  const commitKeys = new Set();
+  const since = new Date(Date.UTC(START_YEAR, 0, 1, 0, 0, 0)).toISOString();
+
+  for (const repo of repos) {
+    const branches = await fetchRepoBranches(repo);
+
+    for (const branch of branches) {
+      for (const author of filters) {
+        let page = 1;
+
+        while (true) {
+          const params = new URLSearchParams({
+            sha: branch.name,
+            author,
+            since,
+            per_page: "100",
+            page: String(page),
+          });
+          const commits = await fetchRestJson(
+            `https://api.github.com/repos/${repoApiPath(repo)}/commits?${params}`,
+            `${repo.full_name} ${branch.name} commits by ${author} page ${page}`,
+            true,
+          );
+
+          if (!Array.isArray(commits) || commits.length === 0) {
+            break;
+          }
+
+          for (const commit of commits) {
+            if (commit?.sha) {
+              commitKeys.add(`${repo.full_name}@${commit.sha}`);
+            }
+          }
+
+          if (commits.length < 100 || page >= 10) {
+            break;
+          }
+
+          page += 1;
+        }
+      }
+    }
+  }
+
   return commitKeys.size;
+}
+
+async function fetchRepoBranches(repo) {
+  const branches = [];
+  let page = 1;
+
+  while (true) {
+    const batch = await fetchRestJson(
+      `https://api.github.com/repos/${repoApiPath(repo)}/branches?per_page=100&page=${page}`,
+      `${repo.full_name} branches page ${page}`,
+      true,
+    );
+
+    if (!Array.isArray(batch) || batch.length === 0) {
+      break;
+    }
+
+    branches.push(...batch.filter((branch) => branch?.name));
+
+    if (batch.length < 100 || page >= 5) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  if (branches.length === 0 && repo.default_branch) {
+    return [{ name: repo.default_branch }];
+  }
+
+  return branches;
+}
+
+function repoApiPath(repo) {
+  return String(repo.full_name)
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
 }
 
 function buildAuthorSearchQueries(authorFilters) {
@@ -362,10 +457,18 @@ function buildStats(user, searchStats, repos) {
   const totalStars = repos
     .filter((repo) => !repo.fork)
     .reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
-  const totalCommits = searchStats.commits ?? totals.totalCommitContributions;
+  const totalCommits = Math.max(
+    searchStats.commits ?? 0,
+    searchStats.searchCommits ?? 0,
+    searchStats.branchCommits ?? 0,
+    totals.totalCommitContributions,
+  );
   const totalPRs = searchStats.prs ?? totals.totalPullRequestContributions;
   const totalIssues = searchStats.issues ?? totals.totalIssueContributions;
 
+  console.log(`Commit search count: ${searchStats.searchCommits ?? searchStats.commits ?? 0}`);
+  console.log(`Branch commit count: ${searchStats.branchCommits ?? 0}`);
+  console.log(`GraphQL commit contributions: ${totals.totalCommitContributions}`);
   console.log(`Total commits: ${totalCommits}`);
   console.log(`Total PRs: ${totalPRs}`);
   console.log(`Total issues: ${totalIssues}`);
