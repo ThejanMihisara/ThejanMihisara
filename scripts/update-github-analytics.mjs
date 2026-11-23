@@ -2,7 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
 
 const USERNAME = process.env.GITHUB_USERNAME || "ThejanMihisara";
-const TOKEN = process.env.GH_STATS_TOKEN || process.env.GITHUB_TOKEN;
+const STATS_TOKEN = process.env.GH_STATS_TOKEN;
+const ACTIONS_TOKEN = process.env.GITHUB_TOKEN;
+let token = STATS_TOKEN || ACTIONS_TOKEN;
 const API_URL = "https://api.github.com/graphql";
 const NOW = new Date();
 const START_YEAR = Number(process.env.GITHUB_STATS_START_YEAR || 2024);
@@ -17,7 +19,7 @@ if (RUN_LARGEST_STREAK_SAMPLE_TEST) {
   process.exit(0);
 }
 
-if (!TOKEN) {
+if (!token) {
   throw new Error("GH_STATS_TOKEN or GITHUB_TOKEN is required to fetch GitHub analytics.");
 }
 
@@ -106,10 +108,9 @@ async function fetchAnalytics() {
     }
   `;
 
-  const response = await fetch(API_URL, {
+  const response = await fetchWithAuth(API_URL, {
     method: "POST",
     headers: {
-      Authorization: `bearer ${TOKEN}`,
       "Content-Type": "application/json",
       "User-Agent": `${USERNAME}-analytics-action`,
     },
@@ -386,9 +387,8 @@ async function fetchRestJson(
   optional = false,
   accept = "application/vnd.github+json",
 ) {
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     headers: {
-      Authorization: `Bearer ${TOKEN}`,
       Accept: accept,
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": `${USERNAME}-analytics-action`,
@@ -429,6 +429,30 @@ async function fetchRestJson(
   }
 
   return payload;
+}
+
+async function fetchWithAuth(url, options = {}) {
+  const request = (authToken) => fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${authToken}`,
+    },
+  });
+
+  let response = await request(token);
+  const canUseActionsFallback = response.status === 401
+    && token === STATS_TOKEN
+    && ACTIONS_TOKEN
+    && ACTIONS_TOKEN !== STATS_TOKEN;
+
+  if (canUseActionsFallback) {
+    console.warn("GH_STATS_TOKEN was rejected by GitHub; retrying with the workflow GITHUB_TOKEN.");
+    token = ACTIONS_TOKEN;
+    response = await request(token);
+  }
+
+  return response;
 }
 
 function buildStats(user, searchStats, repos) {
