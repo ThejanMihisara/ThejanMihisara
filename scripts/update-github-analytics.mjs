@@ -137,10 +137,14 @@ async function fetchAnalytics() {
 async function fetchAccessibleRepos() {
   const repos = [];
   let page = 1;
+  const usingActionsToken = token === ACTIONS_TOKEN;
 
   while (true) {
+    const url = usingActionsToken
+      ? `https://api.github.com/users/${encodeURIComponent(USERNAME)}/repos?type=owner&per_page=100&page=${page}&sort=updated&direction=desc`
+      : `https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&per_page=100&page=${page}&sort=updated&direction=desc`;
     const batch = await fetchRestJson(
-      `https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&per_page=100&page=${page}&sort=updated&direction=desc`,
+      url,
       `repos page ${page}`,
     );
 
@@ -157,6 +161,9 @@ async function fetchAccessibleRepos() {
     page += 1;
   }
 
+  if (usingActionsToken) {
+    console.warn("Using public owner repositories because the workflow GITHUB_TOKEN cannot list repositories for an authenticated user.");
+  }
   console.log(`Accessible repos: ${repos.length}`);
   console.log(`Accessible private repos: ${repos.filter((repo) => repo.private).length}`);
   return repos;
