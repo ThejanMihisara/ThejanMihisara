@@ -1,5 +1,5 @@
 <svg width="860" height="430" viewBox="0 0 860 430" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GitHub Analytics">
-<!-- updated: 2026-11-23T06:05:21.248Z -->
+<!-- updated: 2026-11-23T07:55:22.600Z -->
 <rect x="1" y="1" width="858" height="428" fill="#0d1117" stroke="#30363d"/>
 <line x1="430" y1="1" x2="430" y2="429" stroke="#30363d"/>
 
@@ -40,19 +40,19 @@
 
 <rect x="468" y="120" width="330" height="180" rx="4" fill="#071126" stroke="#c9d1d9"/>
 <text x="492" y="154" fill="#00aaff" font-size="18" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">My Programming Languages</text>
-<rect x="492.0" y="174" width="151.2" height="7" fill="#f1e05a"/>
-<rect x="643.2" y="174" width="38.2" height="7" fill="#3572A5"/>
-<rect x="681.4" y="174" width="29.7" height="7" fill="#e34c26"/>
-<rect x="711.1" y="174" width="29.6" height="7" fill="#b07219"/>
-<rect x="740.7" y="174" width="13.6" height="7" fill="#f7523f"/>
-<rect x="754.2" y="174" width="11.4" height="7" fill="#663399"/>
+<rect x="492.0" y="174" width="151.3" height="7" fill="#f1e05a"/>
+<rect x="643.3" y="174" width="38.2" height="7" fill="#3572A5"/>
+<rect x="681.5" y="174" width="29.7" height="7" fill="#e34c26"/>
+<rect x="711.2" y="174" width="29.6" height="7" fill="#b07219"/>
+<rect x="740.7" y="174" width="13.5" height="7" fill="#f7523f"/>
+<rect x="754.3" y="174" width="11.4" height="7" fill="#663399"/>
 <rect x="765.6" y="174" width="10.4" height="7" fill="#4F5D95"/>
 <circle cx="496" cy="201" r="5" fill="#f1e05a"/>
-<text x="507" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">JavaScript (53.25%)</text>
+<text x="507" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">JavaScript (53.28%)</text>
 <circle cx="638" cy="201" r="5" fill="#3572A5"/>
-<text x="649" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Python (13.45%)</text>
+<text x="649" y="205" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Python (13.44%)</text>
 <circle cx="496" cy="225" r="5" fill="#e34c26"/>
-<text x="507" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">HTML (10.45%)</text>
+<text x="507" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">HTML (10.44%)</text>
 <circle cx="638" cy="225" r="5" fill="#b07219"/>
 <text x="649" y="229" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">Java (10.41%)</text>
 <circle cx="496" cy="249" r="5" fill="#f7523f"/>
@@ -62,5 +62,5 @@
 <circle cx="496" cy="273" r="5" fill="#4F5D95"/>
 <text x="507" y="277" fill="#ffffff" font-size="10" font-weight="700" text-anchor="start" font-family="Inter, Segoe UI, Arial, sans-serif">PHP (3.66%)</text>
 
-<text x="430" y="416" fill="#8b949e" font-size="10" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Updated by GitHub Actions on Nov 23, 2026, 11:35 AM GMT+5:30</text>
+<text x="430" y="416" fill="#8b949e" font-size="10" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">Updated by GitHub Actions on Nov 23, 2026, 01:25 PM GMT+5:30</text>
 </svg>
